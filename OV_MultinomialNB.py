@@ -3,10 +3,14 @@ from sklearn.feature_extraction.text import CountVectorizer
 import pandas as pd
 import enum
 from math import log10
+from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score
 
 tweet_id_index = 0
 tweet_index = 1
 label_index = 2
+
+traceOV = open("trace_NB-BOW-FV.txt", "w")
+evalOV = open("eval_NB-BOW-OV", "w")
 
 class q1_classification(enum.Enum):
   YES = 'yes'
@@ -91,8 +95,31 @@ class OV_MultinomialNB:
       # print(good_score, bad_score)
 
       good = good_score >= bad_score
+      tweetID = row[tweet_id_index]
+      likelyClass = q1_classification.YES.value if good else q1_classification.NO.value
+      likelyScore = good_score if good else bad_score
+      correctClass = row[label_index]
+      label = "correct" if correctClass == likelyClass else "wrong"
+      print(len(row[label_index]), len([label["class"] for label in results]))
+      # accuracy = accuracy_score(row[label_index], [label["class"] for label in results])
+      perClassPrecisionYes = ""
+      perClassPrecisionNo = ""
+      perClassRecallYes = ""
+      perClassRecallNo = ""
+      # perClassF1Yes = 2*(perClassRecallYes+perClassPrecisionYes) / \
+      #     (perClassRecallYes-perClassPrecisionYes)
+      # perClassF1No = 2*(perClassRecallNo+perClassPrecisionNo) / \
+      #     (perClassRecallNo-perClassPrecisionNo)
 
-      results.append({"tweet_id": row[tweet_id_index], "class": q1_classification.YES.value if good else q1_classification.NO.value, "score": good_score})
+      results.append({"tweet_id": tweetID, "class": likelyClass, "score": good_score})
+
+      traceOV.write( tweetID+"  "+likelyClass+"  "+likelyScore+"  "+correctClass+"  "+label)
+      evalOV.write(accuracy+"/n"+
+                    perClassPrecisionYes+"  " +perClassPrecisionNo+"/n"+
+                    perClassRecallYes+"  "+perClassRecallNo+"/n"
+                    # + perClassF1Yes+"  "+perClassF1No
+                  )
+
 
     return results
 
