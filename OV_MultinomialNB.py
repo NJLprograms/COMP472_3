@@ -81,16 +81,19 @@ class OV_MultinomialNB:
     return
 
   def predict(self, filename):
-    print
     results = []
 
     ov = read_ov(filename, header=None)
     vectorizer = CountVectorizer(lowercase=True)
     rows = [row for row in ov.to_numpy()]
 
+    labels = []
+
     for row in rows:
       good_score = log10(self.number_of_good_tweets / self.vocab_length) + sum([log10(self.good_word_likelihoods.get(word, 1)) for word in row[tweet_index]])
       bad_score = log10(self.number_of_bad_tweets / self.vocab_length) + sum([log10(self.bad_word_likelihoods.get(word, 1)) for word in row[tweet_index]])
+
+      labels.append(row[label_index])
 
       # print(good_score, bad_score)
 
@@ -100,8 +103,6 @@ class OV_MultinomialNB:
       likelyScore = good_score if good else bad_score
       correctClass = row[label_index]
       label = "correct" if correctClass == likelyClass else "wrong"
-      print(len(row[label_index]), len([label["class"] for label in results]))
-      # accuracy = accuracy_score(row[label_index], [label["class"] for label in results])
       perClassPrecisionYes = ""
       perClassPrecisionNo = ""
       perClassRecallYes = ""
@@ -113,12 +114,17 @@ class OV_MultinomialNB:
 
       results.append({"tweet_id": tweetID, "class": likelyClass, "score": good_score})
 
-      traceOV.write( tweetID+"  "+likelyClass+"  "+likelyScore+"  "+correctClass+"  "+label)
-      evalOV.write(accuracy+"/n"+
-                    perClassPrecisionYes+"  " +perClassPrecisionNo+"/n"+
-                    perClassRecallYes+"  "+perClassRecallNo+"/n"
-                    # + perClassF1Yes+"  "+perClassF1No
-                  )
+      traceOV.write(f'{tweetID}  {likelyClass}  {likelyScore}  {correctClass}  {label}')
+
+    accuracy = accuracy_score(labels, [label["class"] for label in results])
+
+    print(accuracy)
+
+    # evalOV.write(accuracy+"/n"+
+    #               perClassPrecisionYes+"  " +perClassPrecisionNo+"/n"+
+    #               perClassRecallYes+"  "+perClassRecallNo+"/n"
+    #               # + perClassF1Yes+"  "+perClassF1No
+    #             )
 
 
     return results
