@@ -4,10 +4,14 @@ import pandas as pd
 import enum
 from math import log10
 import copy
+from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score
 
 tweet_id_index = 0
 tweet_index = 1
 label_index = 2
+
+traceFV = open("trace_NB-BOW-FV.txt", "w")
+evalFV = open("eval_NB-BOW-FV", "w")
 
 class q1_classification(enum.Enum):
   YES = 'yes'
@@ -98,15 +102,60 @@ class FV_MultinomialNB:
     ov = read_ov(filename, header=None)
     vectorizer = CountVectorizer(lowercase=True)
     rows = [row for row in ov.to_numpy()]
+    labels = []
+    tpY = 0
+    fpY = 0
+    fnY = 0
+    tpN = 0
+    fpN = 0
+    fnN = 0
 
     for row in rows:
       good_score = log10(self.number_of_good_tweets / self.vocab_length) + sum([log10(self.good_word_likelihoods.get(word, 1)) for word in row[tweet_index]])
       bad_score = log10(self.number_of_bad_tweets / self.vocab_length) + sum([log10(self.bad_word_likelihoods.get(word, 1)) for word in row[tweet_index]])
-
-      # print(good_score, bad_score)
-
       good = good_score >= bad_score
 
-      results.append({"tweet_id": row[tweet_id_index], "class": q1_classification.YES.value if good else q1_classification.NO.value, "score": good_score})
+      labels.append(row[label_index])
+
+      tweetID = row[tweet_id_index]
+      likelyClass = q1_classification.YES.value if good else q1_classification.NO.value
+      likelyScore = good_score if good else bad_score
+      correctClass = row[label_index]
+      label = "correct" if correctClass == likelyClass else "wrong"
+      
+      if correctClass == q1_classification.YES.value:
+        if likelyClass == q1_classification.YES.value and correctClass == q1_classification.YES.value:
+          tpY += 1
+        elif likelyClass == q1_classification.NO.value and correctClass == q1_classification.YES.value:
+          fnY += 1
+        elif likelyClass == q1_classification.YES.value and correctClass == q1_classification.NO.value:
+          fpY += 1
+
+      if correctClass == q1_classification.NO.value:
+        if likelyClass == q1_classification.NO.value and correctClass == q1_classification.NO.value:
+          tpN += 1
+        elif likelyClass == q1_classification.YES.value and correctClass == q1_classification.NO.value:
+          fnN += 1
+        elif likelyClass == q1_classification.NO.value and correctClass == q1_classification.YES.value:
+          fpN += 1
+
+
+      results.append({"tweet_id": tweetID, "class": likelyClass, "score": good_score})
+      traceFV.write(
+          f'{tweetID}  {likelyClass}  {likelyScore}  {correctClass}  {label}\n')
+
+    accuracy = accuracy_score(labels, [label["class"] for label in results])
+    perClassPrecisionYes = tpY/(tpY + fpY)
+    perClassPrecisionNo = tpN/(tpN + fpN)
+    perClassRecallYes = tpY/(tpY+fnY)
+    perClassRecallNo = tpN/(tpN+fnN)
+    perClassF1Yes = 2*(perClassRecallYes*perClassPrecisionYes) / \
+        (perClassRecallYes+perClassPrecisionYes)
+    perClassF1No = 2*(perClassRecallNo*perClassPrecisionNo) / \
+        (perClassRecallNo+perClassPrecisionNo)
+
+    traceFV.close()
+    evalFV.write(f"{accuracy }\n{perClassPrecisionYes}  {perClassPrecisionNo}\n{perClassRecallYes}  {perClassRecallNo}\n{perClassF1Yes}  {perClassF1No}")
+    evalFV.close()
 
     return results

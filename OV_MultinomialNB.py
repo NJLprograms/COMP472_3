@@ -9,7 +9,7 @@ tweet_id_index = 0
 tweet_index = 1
 label_index = 2
 
-traceOV = open("trace_NB-BOW-FV.txt", "w")
+traceOV = open("trace_NB-BOW-OV.txt", "w")
 evalOV = open("eval_NB-BOW-OV", "w")
 
 class q1_classification(enum.Enum):
@@ -88,6 +88,12 @@ class OV_MultinomialNB:
     rows = [row for row in ov.to_numpy()]
 
     labels = []
+    tpY = 0
+    fpY = 0
+    fnY = 0
+    tpN = 0
+    fpN = 0
+    fnN = 0
 
     for row in rows:
       good_score = log10(self.number_of_good_tweets / self.vocab_length) + sum([log10(self.good_word_likelihoods.get(word, 1)) for word in row[tweet_index]])
@@ -103,39 +109,44 @@ class OV_MultinomialNB:
       likelyScore = good_score if good else bad_score
       correctClass = row[label_index]
       label = "correct" if correctClass == likelyClass else "wrong"
-      perClassPrecisionYes = ""
-      perClassPrecisionNo = ""
-      perClassRecallYes = ""
-      perClassRecallNo = ""
-      # perClassF1Yes = 2*(perClassRecallYes+perClassPrecisionYes) / \
-      #     (perClassRecallYes-perClassPrecisionYes)
-      # perClassF1No = 2*(perClassRecallNo+perClassPrecisionNo) / \
-      #     (perClassRecallNo-perClassPrecisionNo)
 
+      if correctClass == q1_classification.YES.value:
+        if likelyClass == q1_classification.YES.value and correctClass == q1_classification.YES.value:
+          tpY += 1 
+        elif likelyClass == q1_classification.NO.value and correctClass == q1_classification.YES.value:
+          fnY += 1
+        elif likelyClass == q1_classification.YES.value and correctClass == q1_classification.NO.value:
+          fpY +=1
+
+      if correctClass == q1_classification.NO.value:
+        if likelyClass == q1_classification.NO.value and correctClass == q1_classification.NO.value:
+          tpN += 1
+        elif likelyClass == q1_classification.YES.value and correctClass == q1_classification.NO.value:
+          fnN += 1
+        elif likelyClass == q1_classification.NO.value and correctClass == q1_classification.YES.value:
+          fpN += 1
+
+        
       results.append({"tweet_id": tweetID, "class": likelyClass, "score": good_score})
 
-      traceOV.write(f'{tweetID}  {likelyClass}  {likelyScore}  {correctClass}  {label}')
+      traceOV.write(f'{tweetID}  {likelyClass}  {likelyScore}  {correctClass}  {label}\n')
 
     accuracy = accuracy_score(labels, [label["class"] for label in results])
+    perClassPrecisionYes = tpY/(tpY + fpY)
+    perClassPrecisionNo = tpN/(tpN + fpN)
+    perClassRecallYes = tpY/(tpY+fnY)
+    perClassRecallNo = tpN/(tpN+fnN)
+    perClassF1Yes = 2*(perClassRecallYes*perClassPrecisionYes) / \
+        (perClassRecallYes+perClassPrecisionYes)
+    perClassF1No = 2*(perClassRecallNo*perClassPrecisionNo) / \
+        (perClassRecallNo+perClassPrecisionNo)
+        
 
-    print(accuracy)
-
-    # evalOV.write(accuracy+"/n"+
-    #               perClassPrecisionYes+"  " +perClassPrecisionNo+"/n"+
-    #               perClassRecallYes+"  "+perClassRecallNo+"/n"
-    #               # + perClassF1Yes+"  "+perClassF1No
-    #             )
+    traceOV.close()
+    evalOV.write(f"{accuracy }\n{perClassPrecisionYes}  {perClassPrecisionNo}\n{perClassRecallYes}  {perClassRecallNo}\n{perClassF1Yes}  {perClassF1No}")
+    evalOV.close()
 
 
     return results
 
-  # shiddd i thought we would use this but turns out we don't need it, my bad, we'll still leave these methods here doe
-  def getFactualTweetProbability(self) -> float:
-    return float(self.number_of_good_tweets + self.smoothing) / self.getNumberOfTotalTweets()
-
-  def getBadTweetProbability(self) -> float:
-    return float(self.number_of_bad_tweets + self.smoothing) / self.getNumberOfTotalTweets()
-
-  def getNumberOfTotalTweets(self) -> int:
-    return self.number_of_good_tweets + self.number_of_bad_tweets
  
