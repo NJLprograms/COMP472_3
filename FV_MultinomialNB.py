@@ -86,11 +86,11 @@ class FV_MultinomialNB:
     
     # define probabilities of words being in factual or non-factual claim
     for word, word_count in self.good_words.items():
-      likelihood = float(word_count + self.smoothing) / (self.number_of_good_tweets + self.smoothing * self.vocab_length)
+      likelihood = float(word_count + self.smoothing) / (len(self.good_words) + self.smoothing * self.vocab_length)
       self.good_word_likelihoods[word] = likelihood
 
     for word, word_count in self.bad_words.items():
-      likelihood = float(word_count + self.smoothing) / (self.number_of_bad_tweets + self.smoothing * self.vocab_length)
+      likelihood = float(word_count + self.smoothing) / (len(self.bad_words) + self.smoothing * self.vocab_length)
       self.bad_word_likelihoods[word] = likelihood
 
     return
@@ -146,13 +146,19 @@ class FV_MultinomialNB:
 
     accuracy = accuracy_score(labels, [label["class"] for label in results])
     perClassPrecisionYes = tpY/(tpY + fpY)
-    perClassPrecisionNo = tpN/(tpN + fpN)
+    perClassPrecisionNo = 0
+
+    if tpN != 0:
+      perClassPrecisionNo = tpN/(tpN + fpN)
+
     perClassRecallYes = tpY/(tpY+fnY)
     perClassRecallNo = tpN/(tpN+fnN)
-    perClassF1Yes = 2*(perClassRecallYes*perClassPrecisionYes) / \
-        (perClassRecallYes+perClassPrecisionYes)
-    perClassF1No = 2*(perClassRecallNo*perClassPrecisionNo) / \
-        (perClassRecallNo+perClassPrecisionNo)
+
+    perClassF1Yes = 2*(perClassRecallYes*perClassPrecisionYes) / (perClassRecallYes+perClassPrecisionYes)
+    perClassF1No = 0
+
+    if perClassRecallNo != 0:
+      perClassF1No = 2*(perClassRecallNo*perClassPrecisionNo) / (perClassRecallNo+perClassPrecisionNo)
 
     traceFV.close()
     evalFV.write(f"{accuracy }\n{perClassPrecisionYes}  {perClassPrecisionNo}\n{perClassRecallYes}  {perClassRecallNo}\n{perClassF1Yes}  {perClassF1No}")

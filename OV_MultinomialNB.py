@@ -71,11 +71,11 @@ class OV_MultinomialNB:
     
     # define probabilities of words being in factual or non-factual claim
     for word, word_count in self.good_words.items():
-      likelihood = float(word_count + self.smoothing) / (self.number_of_good_tweets + self.smoothing * self.vocab_length)
+      likelihood = float(word_count + self.smoothing) / (len(self.good_words) + self.smoothing * self.vocab_length)
       self.good_word_likelihoods[word] = likelihood
 
     for word, word_count in self.bad_words.items():
-      likelihood = float(word_count + self.smoothing) / (self.number_of_bad_tweets + self.smoothing * self.vocab_length)
+      likelihood = float(word_count + self.smoothing) / (len(self.bad_words) + self.smoothing * self.vocab_length)
       self.bad_word_likelihoods[word] = likelihood
 
     return
